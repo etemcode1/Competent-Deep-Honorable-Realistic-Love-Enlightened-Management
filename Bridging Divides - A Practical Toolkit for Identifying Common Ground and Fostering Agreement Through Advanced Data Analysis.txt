@@ -1,0 +1,1502 @@
+Okay, let's tackle this challenge with a focus on identifying points of strong mutual agreement, which we'll represent as overlapping sets or shared values within data. We'll use C, focusing on efficiency and clarity, and incorporate some mathematical concepts relevant to the problem. Here are 8 code examples, each with a specific focus and filename:
+
+General Principles Across Examples
+
+Data Representation: We'll represent 'points of agreement' as numerical values (integers or floats) within arrays. This could represent anything: shared interests, numerical survey data, feature vectors, etc.
+
+Robust Error Handling: We'll aim for some basic checks and return values indicating success or failure.
+
+Abstraction: Functions will help break down problems into smaller, manageable units.
+
+Algorithm Selection: We will use appropriate algorithms for each scenario:
+
+Set intersection (using sorting and linear time search for efficiency)
+
+Correlation (using Pearson correlation)
+
+Clustering (using K-means)
+
+Weighted Similarity Metrics
+
+Clarity and Comments: Code will be commented to explain purpose and strategy.
+
+Code Examples
+
+1. agreement_intersection.c - Finding Exact Overlap
+
+Strategy: Sort arrays and use two pointers to efficiently find common elements (set intersection). This focuses on perfect agreement.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+//Comparison function for qsort
+int compare_ints(const void *a, const void *b){
+    return (*(int*)a - *(int*)b);
+}
+
+int* find_intersection(int arr1[], int n1, int arr2[], int n2, int *intersection_size) {
+    //Error check
+    if (arr1 == NULL || arr2 == NULL || n1 <= 0 || n2 <=0) return NULL;
+
+    // Sort both arrays first
+    qsort(arr1, n1, sizeof(int), compare_ints);
+    qsort(arr2, n2, sizeof(int), compare_ints);
+
+    int *intersection = malloc(sizeof(int) * (n1 < n2 ? n1 : n2)); // max possible size
+    if (!intersection) return NULL;
+
+    int i = 0, j = 0, k = 0;
+    while (i < n1 && j < n2) {
+        if (arr1[i] < arr2[j]) {
+            i++;
+        } else if (arr2[j] < arr1[i]) {
+            j++;
+        } else {
+            intersection[k++] = arr1[i];
+            i++;
+            j++;
+        }
+    }
+    *intersection_size = k;
+    if (k == 0){
+        free(intersection);
+        return NULL; // No intersection
+    }
+    return intersection;
+}
+
+int main() {
+    int arr1[] = {5, 2, 8, 1, 9, 4};
+    int arr2[] = {9, 4, 7, 2, 10, 3, 1};
+    int n1 = sizeof(arr1) / sizeof(arr1[0]);
+    int n2 = sizeof(arr2) / sizeof(arr2[0]);
+    int intersection_size;
+
+    int *intersection = find_intersection(arr1, n1, arr2, n2, &intersection_size);
+    if (intersection){
+        printf("Intersection: ");
+        for (int i = 0; i < intersection_size; i++) {
+            printf("%d ", intersection[i]);
+        }
+        printf("\n");
+        free(intersection);
+    }else {
+      printf("No intersection found.\n");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+2. agreement_correlation.c - Measuring Linear Relationships
+
+Strategy: Calculate Pearson's correlation coefficient to measure how linearly related two sets of values are. This gauges a level of agreement that is not necessarily point-by-point.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
+
+
+// Helper function to find the mean
+double calculate_mean(double arr[], int n) {
+    double sum = 0;
+    for (int i = 0; i < n; i++) {
+        sum += arr[i];
+    }
+    return sum / n;
+}
+
+double calculate_standard_deviation(double arr[], int n, double mean){
+    double sum = 0;
+    for(int i = 0; i < n; i++){
+      sum += pow(arr[i] - mean, 2);
+    }
+    return sqrt(sum / (n - 1));
+}
+
+// Calculate the Pearson correlation coefficient
+double pearson_correlation(double arr1[], double arr2[], int n) {
+    if (arr1 == NULL || arr2 == NULL || n <=0 ) return NAN;
+    double mean1 = calculate_mean(arr1, n);
+    double mean2 = calculate_mean(arr2, n);
+    double std1 = calculate_standard_deviation(arr1, n, mean1);
+    double std2 = calculate_standard_deviation(arr2, n, mean2);
+    if (std1 == 0.0 || std2 == 0.0) return NAN;
+
+    double numerator = 0;
+    for (int i = 0; i < n; i++) {
+        numerator += (arr1[i] - mean1) * (arr2[i] - mean2);
+    }
+    
+    return numerator / ((n - 1) * std1 * std2);
+}
+
+int main() {
+    double arr1[] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    double arr2[] = {2.1, 3.9, 6.2, 8.1, 9.9};
+    int n = sizeof(arr1) / sizeof(arr1[0]);
+
+    double correlation = pearson_correlation(arr1, arr2, n);
+    if (isnan(correlation)){
+        printf("Undefined correlation. Division by zero\n");
+    } else{
+      printf("Pearson Correlation: %.3f\n", correlation);
+    }
+    
+
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+3. agreement_kmeans.c - Grouping for Shared Trends
+
+Strategy: Use a simplified K-means clustering algorithm to group data points, indicating shared trends. This approach assumes data has a multi-dimensional nature. We will keep it simple using one dimensional array.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <float.h>
+#include <stdbool.h>
+
+// Struct to represent a centroid
+typedef struct {
+    double value;
+} centroid_t;
+
+
+// Function to compute distance between a data point and centroid
+double distance(double point, centroid_t centroid) {
+    return fabs(point - centroid.value);
+}
+
+// Function to assign data points to the nearest centroid
+int assign_to_centroid(double point, centroid_t centroids[], int k) {
+    int nearest_centroid = 0;
+    double min_distance = DBL_MAX;
+    for (int i = 0; i < k; i++) {
+        double dist = distance(point, centroids[i]);
+        if (dist < min_distance) {
+            min_distance = dist;
+            nearest_centroid = i;
+        }
+    }
+    return nearest_centroid;
+}
+
+// Function to update centroid based on assigned points
+bool update_centroid(double data[], int data_size, int assignments[], centroid_t centroids[], int k){
+    for (int i = 0; i < k; i++){
+        int count = 0;
+        double sum = 0.0;
+        for (int j = 0; j < data_size; j++){
+            if(assignments[j] == i){
+                sum += data[j];
+                count++;
+            }
+        }
+        if (count > 0){
+            centroids[i].value = sum / count;
+        } else {
+          return false; //No points to centroid, bad input params
+        }
+
+    }
+    return true;
+
+}
+
+//Function to calculate the sum of squared error
+double calculate_sse(double data[], int data_size, int assignments[], centroid_t centroids[], int k){
+  double sse = 0;
+  for (int i = 0; i < data_size; i++){
+    sse += pow(distance(data[i], centroids[assignments[i]]), 2);
+  }
+  return sse;
+}
+// Function to perform k-means clustering
+int k_means(double data[], int data_size, int k, double sse_threshold, double centroids_init[], int assignments[], centroid_t centroids[]) {
+     if (data == NULL || data_size <= 0 || k <=0 || centroids_init == NULL || assignments == NULL){
+       return -1; //Bad input parameters
+    }
+
+
+    // Initialize centroids
+    for(int i = 0; i < k; i++){
+       centroids[i].value = centroids_init[i];
+    }
+
+
+    bool changed;
+    int iterations = 0;
+    do{
+      changed = false;
+        // Assign points to centroids
+        for (int i = 0; i < data_size; i++){
+           int nearest = assign_to_centroid(data[i], centroids, k);
+            if (assignments[i] != nearest){
+               assignments[i] = nearest;
+               changed = true;
+            }
+
+        }
+
+        // Update Centroids
+        if (changed == true){
+           if (update_centroid(data, data_size, assignments, centroids, k) == false){
+             return -1; //Error in updating
+           }
+        }
+        iterations++;
+
+    } while(changed && iterations < 100); // Limit max iterations for robustness
+
+
+   // Calculate sum of squared errors
+   double sse = calculate_sse(data, data_size, assignments, centroids, k);
+
+   // Check against stopping criteria
+  if(sse > sse_threshold) return -2;
+   return 0; //Return 0 if success
+
+}
+int main() {
+    double data[] = {1.0, 2.0, 1.5, 7.0, 8.0, 7.5, 11, 12, 11.5};
+    int data_size = sizeof(data) / sizeof(data[0]);
+    int k = 3;
+    double sse_threshold = 1.0; // Example threshold
+    double centroids_init[] = {1.0, 7.0, 11.0}; // Initial centroid values
+    centroid_t centroids[k];
+    int assignments[data_size];
+
+    int result = k_means(data, data_size, k, sse_threshold, centroids_init, assignments, centroids);
+
+    if (result == 0){
+       printf("K-means clustering completed.\n");
+        for (int i = 0; i < k; i++){
+         printf("Centroid %d: %.2lf\n", i, centroids[i].value);
+        }
+
+        printf("Assignments: ");
+        for(int i = 0; i < data_size; i++){
+         printf("%d ", assignments[i]);
+        }
+        printf("\n");
+    } else if (result == -1){
+        printf("Error in clustering - bad input params");
+    } else if (result == -2){
+        printf("Error: Not converged below SSE threshold. Consider increasing iterations\n");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+4. agreement_weighted_similarity.c - Valuing Certain Agreements More
+
+Strategy: Define a scoring function that weights specific shared values (agreements) differently based on importance.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+// Function to calculate weighted similarity between two arrays
+double calculate_weighted_similarity(int arr1[], int n1, int arr2[], int n2, double weights[], int num_weights) {
+    if (arr1 == NULL || arr2 == NULL || weights == NULL || n1 <= 0 || n2 <= 0 || num_weights <= 0) return -1.0;
+
+    double similarity = 0.0;
+    int agreement_count = 0;
+    //Linear search for agreements
+    for (int i = 0; i < n1; i++) {
+      for (int j = 0; j < n2; j++){
+        if(arr1[i] == arr2[j]){
+            bool found = false;
+            //Check if value has already been counted
+            for(int k = 0; k < i; k++){
+                if (arr1[k] == arr1[i]){
+                  found = true;
+                  break;
+                }
+            }
+            if (found) continue;
+
+            if (agreement_count < num_weights) {
+                similarity += weights[agreement_count];
+                agreement_count++;
+            } else {
+              similarity += weights[num_weights-1];
+            }
+            break;
+        }
+      }
+    }
+
+   //Normalize for better interpretation
+   return similarity / (n1 < n2 ? n1 : n2);
+}
+
+int main() {
+    int arr1[] = {1, 2, 3, 4, 5, 6};
+    int arr2[] = {1, 3, 5, 7, 8, 9, 1}; //Note repeats, only count unique ones
+    double weights[] = {0.8, 0.6, 0.4, 0.2}; // Weights for specific agreements, last weight repeated if more than number of weights
+    int n1 = sizeof(arr1) / sizeof(arr1[0]);
+    int n2 = sizeof(arr2) / sizeof(arr2[0]);
+    int num_weights = sizeof(weights) / sizeof(weights[0]);
+
+    double similarity = calculate_weighted_similarity(arr1, n1, arr2, n2, weights, num_weights);
+    if(similarity != -1.0) {
+        printf("Weighted Similarity: %.2f\n", similarity);
+    } else {
+      printf("Error: Invalid Parameters\n");
+    }
+    return 0;
+}
+content_copy
+
+
+
+
+5. agreement_fuzzy_set.c - Handling Approximations
+
+Strategy: Represent values with fuzzy memberships and calculate the degree of overlap, enabling agreement measurement between similar values, not just identical ones. We'll use triangular membership functions for simplicity.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
+
+// Struct to represent a fuzzy membership
+typedef struct {
+    double center;
+    double width;
+} fuzzy_set_t;
+
+// Function to calculate the membership value (triangular membership)
+double calculate_membership(double value, fuzzy_set_t set) {
+    if (value < set.center - set.width / 2.0 || value > set.center + set.width / 2.0) {
+        return 0.0;
+    } else if (value == set.center){
+      return 1.0;
+    } else {
+        return 1.0 - (fabs(value - set.center) / (set.width / 2.0));
+    }
+}
+
+// Function to calculate fuzzy agreement between two sets
+double calculate_fuzzy_agreement(double arr1[], int n1, fuzzy_set_t sets1[], double arr2[], int n2, fuzzy_set_t sets2[]) {
+  if (arr1 == NULL || arr2 == NULL || sets1 == NULL || sets2 == NULL || n1 <= 0 || n2 <= 0 ) return -1.0;
+    double total_overlap = 0.0;
+    int total_possible_overlaps = 0;
+
+    for(int i = 0; i < n1; i++){
+      for(int j = 0; j < n2; j++){
+        double overlap = calculate_membership(arr2[j], sets1[i]) * calculate_membership(arr1[i], sets2[j]);
+         if (overlap > 0) {
+              total_overlap += overlap;
+             total_possible_overlaps++;
+           }
+        }
+    }
+    if (total_possible_overlaps == 0) return 0.0;
+
+    return total_overlap / total_possible_overlaps;
+
+}
+
+int main() {
+    double arr1[] = {5.0, 8.0, 12.0};
+    fuzzy_set_t sets1[] = {{5.0, 2.0}, {8.0, 3.0}, {12.0, 2.0}}; // center and width
+    double arr2[] = {4.5, 9.0, 11.0, 6.5};
+    fuzzy_set_t sets2[] = {{4.5, 2.0}, {9.0, 2.5}, {11.0, 1.5}, {6.5, 2.5}};
+
+    int n1 = sizeof(arr1) / sizeof(arr1[0]);
+    int n2 = sizeof(arr2) / sizeof(arr2[0]);
+    double agreement = calculate_fuzzy_agreement(arr1, n1, sets1, arr2, n2, sets2);
+
+    if (agreement != -1.0){
+       printf("Fuzzy Agreement: %.3f\n", agreement);
+    } else {
+       printf("Invalid input parameters");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+6. agreement_rank_correlation.c - Measuring Ordinal Agreement
+
+Strategy: Use Spearman's rank correlation to measure the similarity in rankings of data, useful when the absolute values are less important than their relative order.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
+
+// Structure to store value and index
+typedef struct {
+    double value;
+    int index;
+} indexed_value_t;
+
+// Comparison function for qsort (for ranking values)
+int compare_values(const void *a, const void *b) {
+    const indexed_value_t *valueA = (const indexed_value_t *)a;
+    const indexed_value_t *valueB = (const indexed_value_t *)b;
+    if (valueA->value < valueB->value) return -1;
+    if (valueA->value > valueB->value) return 1;
+    return 0;
+}
+
+// Function to assign ranks to an array
+void assign_ranks(double arr[], int n, double ranks[]) {
+    indexed_value_t indexed_values[n];
+    for (int i = 0; i < n; i++) {
+        indexed_values[i].value = arr[i];
+        indexed_values[i].index = i;
+    }
+    qsort(indexed_values, n, sizeof(indexed_value_t), compare_values);
+
+     for (int i = 0; i < n; i++) {
+         ranks[indexed_values[i].index] = i + 1;
+    }
+}
+
+// Function to calculate Spearman's rank correlation coefficient
+double spearman_rank_correlation(double arr1[], double arr2[], int n) {
+    if (arr1 == NULL || arr2 == NULL || n <= 0) return NAN;
+    double ranks1[n];
+    double ranks2[n];
+
+    assign_ranks(arr1, n, ranks1);
+    assign_ranks(arr2, n, ranks2);
+
+    double sum_diff_sq = 0.0;
+    for (int i = 0; i < n; i++) {
+        sum_diff_sq += pow(ranks1[i] - ranks2[i], 2);
+    }
+
+    double numerator = 6 * sum_diff_sq;
+    double denominator = n * (n*n - 1);
+
+    if (denominator == 0) return NAN; //Avoid division by 0
+    return 1.0 - (numerator / denominator);
+}
+
+int main() {
+    double arr1[] = {3.1, 1.2, 4.5, 2.8, 5.0};
+    double arr2[] = {3.0, 1.0, 4.8, 2.9, 4.9};
+    int n = sizeof(arr1) / sizeof(arr1[0]);
+
+    double correlation = spearman_rank_correlation(arr1, arr2, n);
+    if(isnan(correlation)) {
+        printf("Undefined Correlation. Division by zero or invalid input params\n");
+    } else {
+      printf("Spearman Rank Correlation: %.3f\n", correlation);
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+7. agreement_jaccard_index.c - Measuring Set Similarity
+
+Strategy: The Jaccard Index measures the size of the intersection divided by the size of the union of two sets, providing a measure of set similarity, very useful for non-numeric data.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+int compare_ints(const void *a, const void *b){
+    return (*(int*)a - *(int*)b);
+}
+
+//Function to find intersection between two sets
+int* find_intersection(int arr1[], int n1, int arr2[], int n2, int *intersection_size) {
+    //Error check
+    if (arr1 == NULL || arr2 == NULL || n1 <= 0 || n2 <=0) return NULL;
+
+    // Sort both arrays first
+    qsort(arr1, n1, sizeof(int), compare_ints);
+    qsort(arr2, n2, sizeof(int), compare_ints);
+
+    int *intersection = malloc(sizeof(int) * (n1 < n2 ? n1 : n2)); // max possible size
+    if (!intersection) return NULL;
+
+    int i = 0, j = 0, k = 0;
+    while (i < n1 && j < n2) {
+        if (arr1[i] < arr2[j]) {
+            i++;
+        } else if (arr2[j] < arr1[i]) {
+            j++;
+        } else {
+            intersection[k++] = arr1[i];
+            i++;
+            j++;
+        }
+    }
+    *intersection_size = k;
+    return intersection;
+}
+
+
+// Function to calculate Jaccard index
+double jaccard_index(int arr1[], int n1, int arr2[], int n2) {
+     if (arr1 == NULL || arr2 == NULL || n1 <= 0 || n2 <= 0 ) return NAN;
+    int intersection_size;
+    int* intersection = find_intersection(arr1, n1, arr2, n2, &intersection_size);
+    if (intersection == NULL || intersection_size == 0){
+        if(intersection) free(intersection);
+        return 0.0;
+    }
+    if (intersection) free(intersection);
+
+    int union_size = n1 + n2 - intersection_size;
+    if (union_size == 0) return NAN;
+    return (double)intersection_size / union_size;
+}
+
+int main() {
+    int arr1[] = {1, 2, 3, 4, 5};
+    int arr2[] = {3, 5, 6, 7, 8};
+    int n1 = sizeof(arr1) / sizeof(arr1[0]);
+    int n2 = sizeof(arr2) / sizeof(arr2[0]);
+
+    double index = jaccard_index(arr1, n1, arr2, n2);
+    if (isnan(index)){
+        printf("Undefined index. Division by Zero or bad input parameters\n");
+    } else {
+      printf("Jaccard Index: %.3f\n", index);
+    }
+
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+8. agreement_cosine_similarity.c - Measuring Directional Similarity
+
+Strategy: Use cosine similarity to determine the degree of similarity in the direction (not magnitude) of two vectors, useful when representing preferences or attributes as vectors.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
+
+// Function to calculate the dot product of two vectors
+double dot_product(double arr1[], double arr2[], int n) {
+  if (arr1 == NULL || arr2 == NULL || n <= 0) return NAN;
+    double result = 0.0;
+    for (int i = 0; i < n; i++) {
+        result += arr1[i] * arr2[i];
+    }
+    return result;
+}
+
+// Function to calculate the magnitude of a vector
+double magnitude(double arr[], int n) {
+  if(arr == NULL || n <= 0) return NAN;
+    double sum_sq = 0.0;
+    for (int i = 0; i < n; i++) {
+        sum_sq += arr[i] * arr[i];
+    }
+    return sqrt(sum_sq);
+}
+
+// Function to calculate cosine similarity
+double cosine_similarity(double arr1[], double arr2[], int n) {
+     if (arr1 == NULL || arr2 == NULL || n <= 0) return NAN;
+    double dot = dot_product(arr1, arr2, n);
+    double mag1 = magnitude(arr1, n);
+    double mag2 = magnitude(arr2, n);
+    if(mag1 == 0 || mag2 == 0) return NAN;
+    return dot / (mag1 * mag2);
+}
+
+int main() {
+    double arr1[] = {1.0, 2.0, 3.0};
+    double arr2[] = {2.0, 4.0, 5.0};
+    int n = sizeof(arr1) / sizeof(arr1[0]);
+
+    double similarity = cosine_similarity(arr1, arr2, n);
+    if (isnan(similarity)){
+        printf("Undefined similarity. Division by zero or invalid parameters\n");
+    } else {
+      printf("Cosine Similarity: %.3f\n", similarity);
+    }
+
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+Complete Explanation of All Examples
+
+agreement_intersection.c:
+
+Purpose: Identifies elements present exactly in both datasets. This represents a direct and undeniable overlap in values.
+
+Method: Sorts both input arrays and then uses a two-pointer linear time algorithm to traverse both simultaneously, identifying shared values. This is an efficient way to find set intersections.
+
+Use Case: Suitable when perfect agreement is required, such as identical preferences or matching items.
+
+agreement_correlation.c:
+
+Purpose: Measures the linear relationship between two sets of data. This is not about having identical values, but if values rise or fall in similar patterns.
+
+Method: Calculates the Pearson correlation coefficient. It measures how deviations from the mean of one dataset relate to deviations from the mean of the second dataset.
+
+Use Case: Ideal for gauging if trends or attitudes align; if one set increases as the other also tends to increase.
+
+agreement_kmeans.c:
+
+Purpose: Groups data into clusters based on similarity in value. This helps identify shared trends or clusters of similar data within the larger dataset.
+
+Method: Implements the K-means clustering algorithm. It iteratively assigns data points to the nearest cluster centroid and then recalculates the centroids.
+
+Use Case: Excellent for finding underlying common themes or viewpoints in a large amount of survey data or complex preferences.
+
+agreement_weighted_similarity.c:
+
+Purpose: Measures the overlap between sets but gives more importance to certain shared values, rather than counting all matches equally.
+
+Method: Implements a scoring function with pre-defined weights for different agreements. It increments similarity score according to weights assigned.
+
+Use Case: Useful when some shared interests or values are more critical for building consensus than others.
+
+agreement_fuzzy_set.c:
+
+Purpose: Allows for agreements based on similarity, not necessarily equality. Values are described with ranges of membership, not discrete values.
+
+Method: Uses triangular fuzzy membership functions. It calculates a degree of overlap between two sets of membership values
+
+Use Case: Useful when dealing with subjective data that has some tolerance (e.g., near matches, similar opinions).
+
+agreement_rank_correlation.c:
+
+Purpose: Measures the degree of similarity in the order or ranking of data values, rather than their absolute values.
+
+Method: Calculates the Spearman's rank correlation coefficient. Data is ranked first, and correlation is based on rank differences.
+
+Use Case: Used when relative order is more important than absolute values such as preference ordering.
+
+agreement_jaccard_index.c:
+
+Purpose: Measures the similarity of sets by looking at the ratio of the size of intersection over union of sets.
+
+Method: Finds intersection and unions and calculates Jaccard index.
+
+Use Case: Useful for comparing sets of preferences or discrete values or finding agreements that are set-based rather than numeric.
+
+agreement_cosine_similarity.c:
+
+Purpose: Measures the similarity between the direction of vectors, not their magnitudes.
+
+Method: Calculates the cosine of the angle between the vectors.
+
+Use Case: Useful when data is represented as vectors (e.g., preference vectors, feature vectors). It is concerned with the direction of vectors, rather than absolute value.
+
+Key Takeaways for Building Bridges
+
+Multiple Perspectives: The examples highlight that 'agreement' can be understood in different ways, depending on the context.
+
+Sophisticated Measurement: Simple matching is often insufficient. Advanced mathematical and statistical techniques (correlation, clustering, fuzzy logic) often provide better insights.
+
+The Power of Weights: By assigning different weights to shared values, you acknowledge not all agreements are equal in importance.
+
+Adaptability: The functions provided can be modified or extended for different types of agreement metrics or data.
+
+Understanding the Problem: Each metric answers a different question, so choose the right metric according to the situation.
+
+These C code examples provide the tools to identify meaningful agreement points. They can help create a foundation for discussions and build bridges based on genuine points of understanding and mutual respect. Remember to apply these methods with an understanding of your specific data and goals.
+
+
+
+
+
+7 examples specifically designed to help seemingly disparate parties find common ground, using robust data, strong math, and a focus on building relationships. We'll emphasize techniques that reveal hidden agreements, patterns, and shared interests, even when initial positions appear far apart.
+
+General Principles for These Examples
+
+Focus on Shared Values (Not Just Positions): We'll look beyond surface disagreements to find underlying shared values or goals.
+
+Data-Driven Approach: Each method will rely on data that accurately represents the parties involved (e.g., survey responses, preference data, historical data).
+
+Sophisticated Math: We'll use math that uncovers patterns and relationships, rather than just basic comparisons.
+
+Outcome Orientation: The objective is not just to identify agreement but to facilitate communication and relationship-building.
+
+Visualization (Implicit): While we won't directly visualize in the C code, these techniques lend themselves to visualization, which could aid in a real-world scenario.
+
+Abstraction: Functions will help break down problems into smaller, manageable units.
+
+Robustness and Error Handling: We will add some error checking in the input and output parameters
+
+Clarity and Comments: Code will be commented to explain purpose and strategy.
+
+Code Examples
+
+1. agreement_shared_goals.c - Identifying Common Goals
+
+Strategy: Parties may have different paths but can often agree on high-level goals. This code analyzes textual representations of goals to find overlaps using set operations.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+
+// Function to split a string into words
+int split_string(char *str, char ***words) {
+    if (str == NULL || words == NULL) return -1;
+    int word_count = 0;
+    char *token = strtok(str, " ,.\n");
+    *words = NULL;
+    while (token != NULL) {
+        //Allocate memory for new word
+        *words = realloc(*words, sizeof(char*) * (word_count + 1));
+        if (*words == NULL) return -1;
+        //Convert to lower case
+        int j = 0;
+         while(token[j]) {
+            token[j] = tolower(token[j]);
+            j++;
+         }
+        (*words)[word_count] = strdup(token); // Duplicate the token
+        if ((*words)[word_count] == NULL) {
+              for (int i=0; i < word_count; i++) free((*words)[i]);
+             free(*words);
+            return -1; // Allocation failed
+         }
+        word_count++;
+        token = strtok(NULL, " ,.\n");
+    }
+    return word_count;
+}
+
+
+// Function to free memory used by split words
+void free_words(char **words, int count) {
+    if (words == NULL) return;
+    for (int i = 0; i < count; i++) {
+        free(words[i]);
+    }
+    free(words);
+}
+
+//Comparison function for qsort
+int compare_strings(const void *a, const void *b){
+    return strcmp(*(const char**)a, *(const char**)b);
+}
+
+
+// Function to find intersection (common words)
+int find_intersection(char **words1, int n1, char **words2, int n2, char ***intersection) {
+  if (words1 == NULL || words2 == NULL || intersection == NULL || n1 <= 0 || n2 <= 0) return -1;
+    //Sort Words first
+    qsort(words1, n1, sizeof(char*), compare_strings);
+    qsort(words2, n2, sizeof(char*), compare_strings);
+    *intersection = NULL;
+    int intersection_size = 0;
+     int i = 0, j = 0;
+    while (i < n1 && j < n2) {
+        int cmp = strcmp(words1[i], words2[j]);
+        if (cmp < 0) {
+            i++;
+        } else if (cmp > 0) {
+            j++;
+        } else {
+          *intersection = realloc(*intersection, sizeof(char*) * (intersection_size + 1));
+          if (*intersection == NULL) {
+             for(int k=0; k < intersection_size; k++) free((*intersection)[k]);
+             free(*intersection);
+             return -1;
+          }
+             (*intersection)[intersection_size] = strdup(words1[i]);
+            if ((*intersection)[intersection_size] == NULL) {
+                for (int k=0; k < intersection_size; k++) free((*intersection)[k]);
+                free(*intersection);
+                return -1; // Allocation failed
+            }
+             intersection_size++;
+            i++;
+            j++;
+        }
+    }
+    return intersection_size;
+}
+
+
+int main() {
+    char goal1[] = "Achieve sustainable growth and reduce inequality";
+    char goal2[] = "Increase economic opportunity and support sustainable initiatives";
+
+    char **words1, **words2, **intersection;
+    int n1, n2, intersection_size;
+     n1 = split_string(goal1, &words1);
+    if (n1 == -1){
+         printf("Error splitting goal 1 string\n");
+        return 1;
+    }
+     n2 = split_string(goal2, &words2);
+     if (n2 == -1){
+         printf("Error splitting goal 2 string\n");
+         free_words(words1, n1);
+        return 1;
+     }
+    intersection_size = find_intersection(words1, n1, words2, n2, &intersection);
+
+    if (intersection_size == -1){
+        printf("Error finding intersection of goals");
+        free_words(words1, n1);
+        free_words(words2, n2);
+        return 1;
+    }
+
+    if (intersection_size > 0) {
+        printf("Shared Goals: ");
+        for (int i = 0; i < intersection_size; i++) {
+            printf("%s ", intersection[i]);
+        }
+        printf("\n");
+        free_words(intersection, intersection_size);
+    } else {
+        printf("No common goals found.\n");
+    }
+     free_words(words1, n1);
+    free_words(words2, n2);
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+2. agreement_latent_interests.c - Discovering Underlying Interests
+
+Strategy: Use a simplified Latent Semantic Analysis (LSA) to reveal hidden interest dimensions from text data. This can find relationships between concepts that aren't explicitly linked.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdbool.h>
+#include <ctype.h>
+
+// --- Helper function from previous example to split the string
+int split_string(char *str, char ***words) {
+    if (str == NULL || words == NULL) return -1;
+    int word_count = 0;
+    char *token = strtok(str, " ,.\n");
+    *words = NULL;
+    while (token != NULL) {
+        //Allocate memory for new word
+        *words = realloc(*words, sizeof(char*) * (word_count + 1));
+        if (*words == NULL) return -1;
+        //Convert to lower case
+        int j = 0;
+         while(token[j]) {
+            token[j] = tolower(token[j]);
+            j++;
+         }
+        (*words)[word_count] = strdup(token); // Duplicate the token
+        if ((*words)[word_count] == NULL) {
+              for (int i=0; i < word_count; i++) free((*words)[i]);
+             free(*words);
+            return -1; // Allocation failed
+         }
+        word_count++;
+        token = strtok(NULL, " ,.\n");
+    }
+    return word_count;
+}
+
+
+void free_words(char **words, int count) {
+    if (words == NULL) return;
+    for (int i = 0; i < count; i++) {
+        free(words[i]);
+    }
+    free(words);
+}
+
+
+//Comparison function for qsort
+int compare_strings(const void *a, const void *b){
+    return strcmp(*(const char**)a, *(const char**)b);
+}
+
+
+// --- End of helper function from previous example
+
+//Function to find unique words and their count
+int find_unique_words(char ***docs, int num_docs, char ***unique_words, int *num_unique_words){
+   if (docs == NULL || unique_words == NULL || num_docs <=0 || num_unique_words == NULL) return -1;
+    *unique_words = NULL;
+    *num_unique_words = 0;
+    // Loop through all documents and all the words
+    for(int doc_index = 0; doc_index < num_docs; doc_index++){
+        int doc_size = 0;
+        char** words = docs[doc_index];
+        while(words[doc_size] != NULL){
+             bool found = false;
+             for (int word_index = 0; word_index < *num_unique_words; word_index++) {
+                if(strcmp(words[doc_size], (*unique_words)[word_index]) == 0){
+                    found = true;
+                    break;
+                }
+             }
+
+             if (found == false){
+              *unique_words = realloc(*unique_words, sizeof(char*) * (*num_unique_words + 1));
+              if (*unique_words == NULL){
+                  for (int i=0; i<*num_unique_words; i++) free((*unique_words)[i]);
+                   free(*unique_words);
+                  return -1; // Allocation failed
+              }
+              (*unique_words)[*num_unique_words] = strdup(words[doc_size]);
+              if((*unique_words)[*num_unique_words] == NULL) {
+                 for (int i=0; i<*num_unique_words; i++) free((*unique_words)[i]);
+                   free(*unique_words);
+                 return -1; // Allocation failed
+              }
+             (*num_unique_words)++;
+            }
+            doc_size++;
+        }
+    }
+    qsort(*unique_words, *num_unique_words, sizeof(char*), compare_strings);
+    return 0;
+}
+
+// Function to create term document matrix
+int create_term_document_matrix(char*** docs, int num_docs, char** unique_words, int num_unique_words, int **matrix){
+     if (docs == NULL || unique_words == NULL || matrix == NULL || num_docs <= 0 || num_unique_words <=0) return -1;
+      *matrix = (int*) calloc (num_docs * num_unique_words, sizeof(int));
+      if (*matrix == NULL) return -1;
+
+    //Loop through each document, then each unique word to fill matrix
+    for(int doc_index = 0; doc_index < num_docs; doc_index++){
+      int doc_size = 0;
+      char **words = docs[doc_index];
+       while(words[doc_size] != NULL) {
+           for (int word_index = 0; word_index < num_unique_words; word_index++){
+                if(strcmp(words[doc_size], unique_words[word_index]) == 0){
+                   (*matrix)[doc_index * num_unique_words + word_index]++; //increment count for that document and word
+                   break;
+                }
+           }
+           doc_size++;
+        }
+    }
+    return 0;
+}
+
+void print_matrix(int *matrix, int num_docs, int num_unique_words){
+   if (matrix == NULL) return;
+    printf("\nTerm Document Matrix\n");
+    for (int doc_index = 0; doc_index < num_docs; doc_index++){
+        for (int word_index = 0; word_index < num_unique_words; word_index++){
+           printf("%d ", matrix[doc_index * num_unique_words + word_index]);
+        }
+        printf("\n");
+    }
+}
+//Simple SVD/LSA is beyond the scope here, will approximate by adding up each document.
+void approximate_svd_dimensions(int *matrix, int num_docs, int num_unique_words, double **dimensions){
+     if (matrix == NULL || dimensions == NULL || num_docs <= 0 || num_unique_words <=0) return;
+    *dimensions = (double*) calloc (num_unique_words, sizeof(double));
+    if (*dimensions == NULL) return;
+    for (int doc_index = 0; doc_index < num_docs; doc_index++){
+        for(int word_index = 0; word_index < num_unique_words; word_index++){
+          (*dimensions)[word_index] += matrix[doc_index * num_unique_words + word_index];
+        }
+    }
+}
+
+//Function to print dimension importance
+void print_dimensions (double *dimensions, char** unique_words, int num_unique_words){
+   if(dimensions == NULL || unique_words == NULL || num_unique_words <= 0) return;
+    printf("\nApproximate Dimensions\n");
+     for (int i = 0; i < num_unique_words; i++){
+         printf("%s: %.2f\n", unique_words[i], dimensions[i]);
+     }
+}
+
+int main() {
+    char *doc1[] = {"environmental protection is vital", NULL};
+    char *doc2[] = {"sustainable resource management is key", NULL};
+    char *doc3[] = {"environmental policies are needed", NULL};
+     char *doc4[] = {"sustainable growth requires investment", NULL};
+    char **docs[] = {doc1, doc2, doc3, doc4}; // Array of text documents
+    int num_docs = sizeof(docs) / sizeof(docs[0]);
+
+    //Split the document into words
+    char*** doc_words = malloc(sizeof(char**) * num_docs);
+    if(doc_words == NULL) {
+        printf("Error allocating memory for doc words");
+        return 1;
+    }
+
+    for(int doc_index = 0; doc_index < num_docs; doc_index++){
+        int size = split_string(docs[doc_index][0], &doc_words[doc_index]);
+        if (size == -1){
+            printf("Error splitting string\n");
+            for(int i = 0; i < doc_index; i++) free_words(doc_words[i], size);
+            free(doc_words);
+            return 1;
+        }
+    }
+    //Find the unique words
+    char **unique_words;
+    int num_unique_words;
+     if(find_unique_words(doc_words, num_docs, &unique_words, &num_unique_words) == -1){
+        printf("Error finding unique words\n");
+         for(int i = 0; i < num_docs; i++) free_words(doc_words[i], 0);
+        free(doc_words);
+        return 1;
+     }
+
+    //Create term document matrix
+    int* term_document_matrix;
+    if(create_term_document_matrix(doc_words, num_docs, unique_words, num_unique_words, &term_document_matrix) == -1){
+       printf("Error creating term document matrix\n");
+        for(int i = 0; i < num_docs; i++) free_words(doc_words[i], 0);
+        free_words(unique_words, num_unique_words);
+        free(doc_words);
+       return 1;
+    }
+
+    //Print matrix and dimensions for inspection
+     print_matrix(term_document_matrix, num_docs, num_unique_words);
+
+     double *dimensions;
+     approximate_svd_dimensions(term_document_matrix, num_docs, num_unique_words, &dimensions);
+
+     print_dimensions(dimensions, unique_words, num_unique_words);
+
+      for(int i = 0; i < num_docs; i++) free_words(doc_words[i], 0);
+        free(doc_words);
+        free(term_document_matrix);
+        free(dimensions);
+    free_words(unique_words, num_unique_words);
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+3. agreement_value_alignment.c - Comparing Core Value Priorities
+
+Strategy: Parties rank or score a set of core values. The code calculates a rank correlation to show how similar their value priorities are.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
+
+// Structure to store value and index
+typedef struct {
+ double value;
+ int index;
+} indexed_value_t;
+
+// Comparison function for qsort (for ranking values)
+int compare_values(const void *a, const void *b) {
+ const indexed_value_t *valueA = (const indexed_value_t *)a;
+ const indexed_value_t *valueB = (const indexed_value_t *)b;
+ if (valueA->value < valueB->value) return -1;
+ if (valueA->value > valueB->value) return 1;
+ return 0;
+}
+
+// Function to assign ranks to an array
+void assign_ranks(double arr[], int n, double ranks[]) {
+if (arr == NULL || ranks == NULL || n <=0) return;
+ indexed_value_t indexed_values[n];
+ for (int i = 0; i < n; i++) {
+     indexed_values[i].value = arr[i];
+     indexed_values[i].index = i;
+ }
+ qsort(indexed_values, n, sizeof(indexed_value_t), compare_values);
+
+  for (int i = 0; i < n; i++) {
+      ranks[indexed_values[i].index] = i + 1;
+ }
+}
+
+// Function to calculate Spearman's rank correlation coefficient
+double spearman_rank_correlation(double arr1[], double arr2[], int n) {
+ if (arr1 == NULL || arr2 == NULL || n <= 0) return NAN;
+ double ranks1[n];
+ double ranks2[n];
+
+ assign_ranks(arr1, n, ranks1);
+ assign_ranks(arr2, n, ranks2);
+
+ double sum_diff_sq = 0.0;
+ for (int i = 0; i < n; i++) {
+     sum_diff_sq += pow(ranks1[i] - ranks2[i], 2);
+ }
+
+ double numerator = 6 * sum_diff_sq;
+ double denominator = n * (n*n - 1);
+
+ if (denominator == 0) return NAN; //Avoid division by 0
+ return 1.0 - (numerator / denominator);
+}
+
+int main() {
+ double values1[] = {5.0, 2.0, 4.0, 1.0, 3.0}; // Party 1's value priorities
+ double values2[] = {4.0, 2.0, 3.0, 1.0, 5.0}; // Party 2's value priorities
+ int n = sizeof(values1) / sizeof(values1[0]);
+
+ double correlation = spearman_rank_correlation(values1, values2, n);
+ if(isnan(correlation)) {
+      printf("Undefined correlation. Division by zero or invalid input params\n");
+ } else {
+   printf("Spearman Rank Correlation: %.3f\n", correlation);
+ }
+
+ return 0;
+}
+content_copy
+Use code with caution.
+C
+
+4. agreement_preference_clustering.c - Grouping Shared Preferences
+
+Strategy: Parties rate various options or preferences. K-means clustering is used to group them by shared patterns of preferences.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <float.h>
+#include <stdbool.h>
+
+// Struct to represent a centroid
+typedef struct {
+    double value;
+} centroid_t;
+
+
+// Function to compute distance between a data point and centroid
+double distance(double point, centroid_t centroid) {
+    return fabs(point - centroid.value);
+}
+
+// Function to assign data points to the nearest centroid
+int assign_to_centroid(double point, centroid_t centroids[], int k) {
+    int nearest_centroid = 0;
+    double min_distance = DBL_MAX;
+    for (int i = 0; i < k; i++) {
+        double dist = distance(point, centroids[i]);
+        if (dist < min_distance) {
+            min_distance = dist;
+            nearest_centroid = i;
+        }
+    }
+    return nearest_centroid;
+}
+
+// Function to update centroid based on assigned points
+bool update_centroid(double data[], int data_size, int assignments[], centroid_t centroids[], int k){
+    for (int i = 0; i < k; i++){
+        int count = 0;
+        double sum = 0.0;
+        for (int j = 0; j < data_size; j++){
+            if(assignments[j] == i){
+                sum += data[j];
+                count++;
+            }
+        }
+        if (count > 0){
+            centroids[i].value = sum / count;
+        } else {
+          return false; //No points to centroid, bad input params
+        }
+
+    }
+    return true;
+
+}
+
+//Function to calculate the sum of squared error
+double calculate_sse(double data[], int data_size, int assignments[], centroid_t centroids[], int k){
+  double sse = 0;
+  for (int i = 0; i < data_size; i++){
+    sse += pow(distance(data[i], centroids[assignments[i]]), 2);
+  }
+  return sse;
+}
+// Function to perform k-means clustering
+int k_means(double data[], int data_size, int k, double sse_threshold, double centroids_init[], int assignments[], centroid_t centroids[]) {
+     if (data == NULL || data_size <= 0 || k <=0 || centroids_init == NULL || assignments == NULL){
+       return -1; //Bad input parameters
+    }
+
+
+    // Initialize centroids
+    for(int i = 0; i < k; i++){
+       centroids[i].value = centroids_init[i];
+    }
+
+
+    bool changed;
+    int iterations = 0;
+    do{
+      changed = false;
+        // Assign points to centroids
+        for (int i = 0; i < data_size; i++){
+           int nearest = assign_to_centroid(data[i], centroids, k);
+            if (assignments[i] != nearest){
+               assignments[i] = nearest;
+               changed = true;
+            }
+
+        }
+
+        // Update Centroids
+        if (changed == true){
+           if (update_centroid(data, data_size, assignments, centroids, k) == false){
+             return -1; //Error in updating
+           }
+        }
+        iterations++;
+
+    } while(changed && iterations < 100); // Limit max iterations for robustness
+
+
+   // Calculate sum of squared errors
+   double sse = calculate_sse(data, data_size, assignments, centroids, k);
+
+   // Check against stopping criteria
+  if(sse > sse_threshold) return -2;
+   return 0; //Return 0 if success
+
+}
+int main() {
+    double preferences[] = {1.0, 1.5, 2.0, 7.0, 7.5, 8.0, 10.0, 10.5, 11.0}; //Combined preference data
+    int data_size = sizeof(preferences) / sizeof(preferences[0]);
+    int k = 3;
+     double sse_threshold = 1.0; // Example threshold
+    double centroids_init[] = {1.0, 7.0, 10.0}; // Initial centroid values
+    centroid_t centroids[k];
+    int assignments[data_size];
+
+
+    int result = k_means(preferences, data_size, k, sse_threshold, centroids_init, assignments, centroids);
+
+     if (result == 0){
+        printf("K-means clustering completed.\n");
+        for (int i = 0; i < k; i++){
+         printf("Centroid %d: %.2lf\n", i, centroids[i].value);
+        }
+        printf("Assignments: ");
+        for(int i = 0; i < data_size; i++){
+         printf("%d ", assignments[i]);
+        }
+        printf("\n");
+    } else if (result == -1){
+        printf("Error in clustering - bad input params");
+    } else if (result == -2){
+        printf("Error: Not converged below SSE threshold. Consider increasing iterations\n");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+5. agreement_negotiation_space.c - Finding Overlap in "Acceptable" Ranges
+
+Strategy: Parties define ranges for acceptable outcomes on various issues. The code finds the overlap (intersection) of these ranges, indicating potential agreement areas.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <limits.h>
+
+typedef struct {
+    double min;
+    double max;
+} range_t;
+
+// Function to find overlap between two ranges
+bool find_range_overlap(range_t range1, range_t range2, range_t* overlap) {
+   if (overlap == NULL) return false;
+     if(range1.min > range1.max || range2.min > range2.max) return false; // Check for invalid input ranges
+    //Calculate the overlap
+    overlap->min = range1.min > range2.min ? range1.min : range2.min;
+    overlap->max = range1.max < range2.max ? range1.max : range2.max;
+
+    if (overlap->min > overlap->max){
+        //No overlap
+        overlap->min = 0;
+        overlap->max = 0;
+        return false;
+    }
+    return true;
+}
+
+int main() {
+    range_t range1 = {2.0, 7.0}; // Party 1's acceptable range
+    range_t range2 = {4.0, 9.0}; // Party 2's acceptable range
+    range_t overlap;
+     if(find_range_overlap(range1, range2, &overlap) == true)
+       printf("Overlap Range: Min = %.2f, Max = %.2f\n", overlap.min, overlap.max);
+    else{
+      printf("No overlap range found, invalid input parameters\n");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+6. agreement_sentiment_analysis.c - Detecting Shared Sentiment
+
+Strategy: Analyze the sentiment (positive, negative, neutral) expressed by each party in their communications. Shared positive sentiment can be a point of connection. This example will be greatly simplified, not actual NLP.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+//Simplified Sentiment Analysis
+int analyze_sentiment(char* text){
+  if (text == NULL) return 0;
+  int pos_score = 0;
+  int neg_score = 0;
+  char* pos_keywords[] = {"good", "great", "happy", "positive", NULL};
+   char* neg_keywords[] = {"bad", "terrible", "unhappy", "negative", NULL};
+
+  char* token = strtok(text, " ,.\n");
+  while(token != NULL){
+    for(int i=0; pos_keywords[i] != NULL; i++){
+      if(strcmp(token, pos_keywords[i]) == 0){
+        pos_score++;
+        break;
+      }
+    }
+     for(int i=0; neg_keywords[i] != NULL; i++){
+       if (strcmp(token, neg_keywords[i]) == 0){
+         neg_score++;
+         break;
+       }
+    }
+    token = strtok(NULL, " ,.\n");
+  }
+
+  if (pos_score > neg_score){
+    return 1;
+  } else if (neg_score > pos_score){
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
+int main(){
+  char* text1 = "This is a good day, things are positive and great.";
+   char* text2 = "The results are terrible, I feel unhappy.";
+  char* text3 = "This is just a neutral statement";
+
+  int score1 = analyze_sentiment(text1);
+  int score2 = analyze_sentiment(text2);
+  int score3 = analyze_sentiment(text3);
+
+  printf("Sentiment of text 1: %d\n", score1);
+   printf("Sentiment of text 2: %d\n", score2);
+  printf("Sentiment of text 3: %d\n", score3);
+
+   if(score1 == 1 && score2 == 1){
+     printf("Shared Positive Sentiment");
+   } else if(score1 == -1 && score2 == -1) {
+      printf("Shared Negative Sentiment");
+   }
+   return 0;
+}
+content_copy
+Use code with caution.
+C
+
+7. agreement_historical_patterns.c - Identifying Consistent Agreement Areas
+
+Strategy: Look for past areas of agreement in historical data (e.g., voting records, shared statements). This shows where common ground has been found before.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+
+// Function to compare two historical records for agreements
+bool compare_records(int record1[], int n1, int record2[], int n2, int threshold) {
+  if (record1 == NULL || record2 == NULL || n1 <= 0 || n2 <= 0) return false;
+   int agreement_count = 0;
+  for (int i = 0; i < n1; i++) {
+      for (int j = 0; j < n2; j++){
+         if(record1[i] == record2[j]){
+           agreement_count++;
+           break;
+         }
+      }
+   }
+   if (agreement_count >= threshold) return true;
+   return false;
+}
+
+int main() {
+    int history1[] = {1, 0, 1, 1, 0}; // Party 1's past agreements (1=agreed)
+    int history2[] = {1, 1, 0, 1, 0, 1}; // Party 2's past agreements (1=agreed)
+     int threshold = 3; // Set agreement threshold
+    int n1 = sizeof(history1) / sizeof(history1[0]);
+    int n2 = sizeof(history2) / sizeof(history2[0]);
+
+    if (compare_records(history1, n1, history2, n2, threshold) == true){
+          printf("Historical agreement found\n");
+    } else {
+       printf("No significant historical agreement\n");
+    }
+    return 0;
+}
+content_copy
+Use code with caution.
+C
+
+Explanation of the Examples
+
+agreement_shared_goals.c: Focuses on why parties are doing something, not what they are asking for, often revealing shared high-level objectives. This uses set operations to detect overlap in textual descriptions of goals.
+
+agreement_latent_interests.c: Reveals underlying interest dimensions, showing indirect connections that might not be obvious using traditional methods. Simplified LSA is used to create dimensions that map to underlying concepts.
+
+agreement_value_alignment.c: Highlights the alignment (or misalignment) in core values. This uses rank correlation to find commonalities in how parties rank the importance of different principles.
+
+agreement_preference_clustering.c: Finds groups with similar preferences. This uses k-means to identify common clusters in the data.
+
+agreement_negotiation_space.c: Finds tangible areas of agreement based on acceptable ranges. Using set intersection, it shows where ranges of tolerance overlap between parties.
+
+agreement_sentiment_analysis.c: Focuses on extracting emotional tone in statements, useful for identifying shared emotional experiences or points of view. This is a simplified sentiment analysis, and doesn't use NLP techniques.
+
+agreement_historical_patterns.c: Looks for consistencies in past behavior, which can demonstrate previous common ground. The logic identifies overlapping 1 values in previous behaviour.
+
+Using These Examples for Relationship Building
+
+Data as a Neutral Arbiter: Presenting shared areas based on objective data can reduce defensiveness.
+
+Focus on the Positive: Emphasize commonalities and shared values.
+
+Building Trust: Showing good-faith efforts to understand each other's perspectives is crucial.
+
+Iterative Process: These methods can be used iteratively, with each round revealing new points of connection.
+
+Communication is Key: The code provides the data, but real connection is created through communication about the insights found.
+
+These seven examples are designed to go beyond basic comparisons and delve into deeper shared connections, providing a strong foundation for building relationships and resolving conflict. They represent a powerful toolkit for identifying common ground and bridging the gaps between seemingly disparate parties, leading to better outcomes.
